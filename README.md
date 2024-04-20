@@ -90,4 +90,30 @@ NAME        ROLE              AGE
 read-pods   Role/pod-reader   16m
 ```
 ```
+vagrant@vagrant:~/rb$ kubectl config get-contexts
+CURRENT   NAME            CLUSTER    AUTHINFO   NAMESPACE
+          minikube        minikube   minikube   default
+*         user1-context   minikube   user1      default
+vagrant@vagrant:~/rb$ kubectl get role pod-reader -o yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{},"name":"pod-reader","namespace":"default"},"rules":[{"apiGroups":[""],"resources":["pods","pods/log"],"verbs":["get","watch","list"]}]}
+  creationTimestamp: "2024-04-20T07:00:33Z"
+  name: pod-reader
+  namespace: default
+  resourceVersion: "2528"
+  uid: 263cb2ae-a74a-498b-8263-d9c0cf16ad1f
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - watch
+  - list
 ```
