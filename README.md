@@ -5,40 +5,89 @@
 - Предусмотрите права пользователя. Пользователь может просматривать логи подов и их конфигурацию (kubectl logs pod <pod_id>, kubectl describe pod <pod_id>).
 - Предоставьте манифесты и скриншоты и/или вывод необходимых команд.
 ```
-vagrant@vagrant:~$ openssl genrsa -out sof.key 2048
+vagrant@vagrant:~/rb$ sudo snap install kubectl --classic
+kubectl 1.29.4 from Canonical✓ installed
+vagrant@vagrant:~/rb$ kubectl apply -f role.yaml
+role.rbac.authorization.k8s.io/pod-reader created
+vagrant@vagrant:~/rb$ kubectl apply -f role-bin.yaml
+rolebinding.rbac.authorization.k8s.io/read-pods created
+vagrant@vagrant:~$ sudo mkdir cert && cd cert
+vagrant@vagrant:~/cert$ sudo openssl genrsa -out user1.key 2048
 Generating RSA private key, 2048 bit long modulus (2 primes)
-............................................................................................................................................................................+++++
-....+++++
+.............................+++++
+...+++++
 e is 65537 (0x010001)
-vagrant@vagrant:~$ openssl req -new -key sof.key -out sof.csr -subj "/CN=sof/O=group"
-vagrant@vagrant:~$ openssl x509 -req -in sof.csr -CA /var/snap/microk8s/6641/certs/ca.crt -CAkey /var/snap/microk8s/6641/certs/ca.key -CAcreateserial -out sof.crt -days
- 365
+vagrant@vagrant:~/cert$ sudo openssl req -new -key user1.key -out user1.csr -subj "/CN=user1/O=group1"
+vagrant@vagrant:~/cert$ sudo  openssl x509 -req -in user1.csr -CA ~/.minikube/ca.crt -CAkey ~/.minikube/ca.key -CAcreateserial -out user1.crt -days 500
 Signature ok
-subject=CN = sof, O = group
+subject=CN = user1, O = group1
 Getting CA Private Key
-vagrant@vagrant:~$ kubectl config set-context sof-context --cluster=my-cluster --user=sof
-Context "sof-context" created.
-vagrant@vagrant:~$ export KUBECONFIG=/home/vagrant/kubeconfig.yaml
-vagrant@vagrant:~$ kubectl config view
+
+vagrant@vagrant:~/cert$ kubectl config set-credentials user1 --client-certificate=user1.crt --client-key=user1.key
+User "user1" set.
+vagrant@vagrant:~/cert$ kubectl config set-context user1-context --cluster=minikube --user=user1
+Context "user1-context" created.
+```
+```
+vagrant@vagrant:~/cert$ kubectl config view
 apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority: /home/vagrant/cert.pem
-    server: https://10.0.2.15:16443
-  name: my-cluster
+    certificate-authority: /home/vagrant/.minikube/ca.crt
+    extensions:
+    - extension:
+        last-update: Sat, 20 Apr 2024 06:54:14 UTC
+        provider: minikube.sigs.k8s.io
+        version: v1.33.0
+      name: cluster_info
+    server: https://192.168.49.2:8443
+  name: minikube
 contexts:
 - context:
-    cluster: my-cluster
-    user: my-user
-  name: my-context
-current-context: my-context
+    cluster: minikube
+    extensions:
+    - extension:
+        last-update: Sat, 20 Apr 2024 06:54:14 UTC
+        provider: minikube.sigs.k8s.io
+        version: v1.33.0
+      name: context_info
+    namespace: default
+    user: minikube
+  name: minikube
+- context:
+    cluster: minikube
+    user: user1
+  name: user1-context
+current-context: minikube
 kind: Config
 preferences: {}
 users:
-- name: my-user
+- name: minikube
   user:
-    client-certificate: /home/vagrant/cert.pem
-    client-key: /home/vagrant/key.pem
-
-
+    client-certificate: /home/vagrant/.minikube/profiles/minikube/client.crt
+    client-key: /home/vagrant/.minikube/profiles/minikube/client.key
+- name: user1
+  user:
+    client-certificate: /home/vagrant/cert/user1.crt
+    client-key: /home/vagrant/cert/user1.key
+```
+```
+vagrant@vagrant:~/cert$ kubectl config use-context user1-context
+Switched to context "user1-context".
+vagrant@vagrant:~/cert$ kubectl config current-context
+user1-context
+vagrant@vagrant:~/cert$ kubectl config use-context minikube
+Switched to context "minikube".
+vagrant@vagrant:~/rb$ kubectl apply -f role.yaml
+role.rbac.authorization.k8s.io/pod-reader unchanged
+vagrant@vagrant:~/rb$ kubectl apply -f role-bin.yaml
+rolebinding.rbac.authorization.k8s.io/read-pods unchanged
+vagrant@vagrant:~/rb$  kubectl get roles
+NAME         CREATED AT
+pod-reader   2024-04-20T07:00:33Z
+vagrant@vagrant:~/rb$ kubectl get rolebindings
+NAME        ROLE              AGE
+read-pods   Role/pod-reader   16m
+```
+```
 ```
